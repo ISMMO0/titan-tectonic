@@ -6,6 +6,14 @@
 
 *15-second teaser — click for the full-quality MP4.*
 
+### Live demo (real app, real database)
+
+[![Titan live demo](docs/media/titan-live-demo.gif)](docs/media/titan-live-demo.mp4)
+
+*Screen recording at 4× speed — click for the full 77-second video.* Emma checks her balance, moves €500 to savings, asks for investment advice, buys €600 of a world ETF and sends €50 to Tom — every action confirmed by her, and the balance updates live from Supabase.
+
+---
+
 Titan is a chat-first banking app: every customer gets a personal AI agent they can **type or talk to**. It reads their real accounts, spots what's happening in their life, and proposes the next step — but **nothing moves until the customer taps Confirm**.
 
 ## What it does
