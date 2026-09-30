@@ -30,6 +30,7 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   output: "standalone", // small Docker image for Cloud Run
   poweredByHeader: false,
+  devIndicators: { position: "top-right" }, // keep the dev badge off the mic button
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

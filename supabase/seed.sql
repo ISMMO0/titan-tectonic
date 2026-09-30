@@ -6,6 +6,7 @@
 --      emma@titan.demo   — 29, loves travel, saving for a house
 --      lucas@titan.demo  — 21, student, tight budget
 --      sofia@titan.demo  — 34, new parent
+--      tom@titan.demo    — 30, Emma's friend (receives her transfers)
 -- 2. Then run this file in the SQL editor.
 --    The on_auth_user_created trigger already created their profile + accounts.
 -- =============================================================================
@@ -18,7 +19,7 @@ declare
 begin
   for u in
     select id, email from auth.users
-    where email in ('emma@titan.demo', 'lucas@titan.demo', 'sofia@titan.demo')
+    where email in ('emma@titan.demo', 'lucas@titan.demo', 'sofia@titan.demo', 'tom@titan.demo')
   loop
     -- Reset previous demo data for this user
     delete from public.transactions    where user_id = u.id;
@@ -98,6 +99,22 @@ begin
       insert into public.holdings (user_id, symbol, quantity, avg_price) values
         (u.id, 'AAPL', 5, 190.00),
         (u.id, 'KBC',  20, 68.50);
+
+    elsif u.email = 'tom@titan.demo' then
+      update public.profiles set full_name = 'Tom Janssens', risk_level = 'medium', calendar_opt_in = false,
+        goals = '[{"title": "New bike", "target": 1500, "deadline": "2027-04-01"}]'
+        where id = u.id;
+      -- Same IBAN as "Tom Janssens" in Emma's contacts → her transfers land here.
+      update public.accounts set balance = 1450.00, iban = 'BE68 5390 0754 7034' where id = v_checking;
+      update public.accounts set balance = 3000.00 where id = v_savings;
+
+      insert into public.contacts (user_id, name, iban) values
+        (u.id, 'Emma Peeters', 'BE71 0961 2345 6769');
+
+      insert into public.transactions (user_id, account_id, amount, description, category, merchant, booked_at) values
+        (u.id, v_checking, 2800.00, 'Salary September', 'income', 'Proximus', now() - interval '6 days'),
+        (u.id, v_checking, -780.00, 'Rent',             'housing', 'Immo Leuven', now() - interval '5 days'),
+        (u.id, v_checking,  -54.10, 'Groceries',        'food',    'Colruyt',  now() - interval '2 days');
     end if;
   end loop;
 end;
