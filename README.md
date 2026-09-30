@@ -2,7 +2,16 @@
 
 > **Tectonic Hackathon · KBC challenge** — *Kate answers. Titan anticipates.*
 
-🔗 **Live app:** _link coming soon_
+## 🔗 Try it live
+
+### **[titan-o5vl2pt2pq-ew.a.run.app](https://titan-o5vl2pt2pq-ew.a.run.app)**
+
+| Jury login | |
+|---|---|
+| Email | `jury@titan.demo` |
+| Password | `azertyuiop123456!` |
+
+*Demo account with fictional data. Try: "Where does my money go?", "I got a €2,000 bonus, what should I do?", "Send €30 to Tom", or tap 🎤 and just talk.*
 
 ## 🎬 Demo
 
