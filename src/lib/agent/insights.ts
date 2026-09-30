@@ -1,3 +1,5 @@
+import { FX_RATES } from "./fx";
+
 export type InsightInput = {
   calendarOptIn: boolean;
   checkingBalance: number;
@@ -88,7 +90,7 @@ export function suggestionsFor(moments: LifeMoment[], savingsBalance: number) {
     suggestions:
       moment.kind === "travel"
         ? [
-            "Review exchange needs: illustrative mock EUR→JPY rate is 160 JPY per EUR, not a live or best-rate quote.",
+            `Review exchange needs: illustrative mock EUR→JPY rate is ${FX_RATES.JPY} JPY per EUR, not a live or best-rate quote.`,
             "Review travel insurance and card use abroad; no product has been purchased.",
           ]
         : moment.kind === "celebration"

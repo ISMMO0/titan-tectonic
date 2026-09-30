@@ -21,6 +21,7 @@ export function ChatWindow({ firstName }: { firstName: string }) {
   const [actionStatus, setActionStatus] = useState<Record<string, ActionStatus>>({});
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const [voiceOn, setVoiceOn] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const greetingRequest = useRef<Promise<string | null> | null>(null);
@@ -34,8 +35,11 @@ export function ChatWindow({ firstName }: { firstName: string }) {
       headers: { "Accept-Language": navigator.language },
     })
       .then(async (response) => {
-        if (!response.ok) return null;
         const data = await response.json();
+        if (!response.ok) {
+          setConnectionError(data.error ?? "Personalized greeting unavailable");
+          return null;
+        }
         return typeof data.reply === "string" && data.reply.trim() ? data.reply : null;
       })
       .catch(() => null);
@@ -80,10 +84,16 @@ export function ChatWindow({ firstName }: { firstName: string }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // Retain the greeting so follow-ups about the suggested moment have context.
-        body: JSON.stringify({ messages: next.map(({ role, content }) => ({ role, content })) }),
+        body: JSON.stringify({
+          messages: [
+            { role: "user", content: "(opened the app)" },
+            ...next.map(({ role, content }) => ({ role, content })),
+          ].slice(-30),
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong");
+      setConnectionError(null);
       addAssistant(data.reply, data.pendingActions, speakReply);
     } catch (err) {
       addAssistant(`⚠️ ${(err as Error).message}`, undefined, false);
@@ -108,6 +118,11 @@ export function ChatWindow({ firstName }: { firstName: string }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col rounded-2xl bg-white shadow-sm">
+      {connectionError && (
+        <p role="status" className="rounded-t-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {connectionError}
+        </p>
+      )}
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2">
         <span className="text-sm font-medium text-slate-500">Titan</span>
         <button

@@ -1,4 +1,6 @@
 import { getBalance } from "./get-balance";
+import { getPortfolio } from "./get-portfolio";
+import { getExchangeRate } from "./get-exchange-rate";
 import { buyStock } from "./buy-stock";
 import { detectMoments, getSuggestions } from "./detect-life-moments";
 import { getBudgetSummary } from "./get-budget-summary";
@@ -13,6 +15,8 @@ import type { Tool } from "./types";
 // To add a tool: create a file in this folder with `defineTool`, then add it here.
 // update_address remains future work.
 export const tools: Tool[] = [
+  getPortfolio,
+  getExchangeRate,
   buyStock,
   detectMoments,
   getSuggestions,

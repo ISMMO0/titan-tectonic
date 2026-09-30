@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { runAgent } from "@/lib/agent/run";
+import { agentFailure } from "@/lib/agent/errors";
 import { jsonError, requireUser } from "@/lib/security";
 
 const bodySchema = z.object({
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
     return NextResponse.json(result);
   } catch (err) {
     console.error("[api/chat]", err);
-    return jsonError("The agent is unavailable right now", 500);
+    const failure = agentFailure(err);
+    return jsonError(failure.message, failure.status);
   }
 }

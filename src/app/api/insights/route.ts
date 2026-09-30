@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runAgent } from "@/lib/agent/run";
+import { agentFailure } from "@/lib/agent/errors";
 import { jsonError, requireUser } from "@/lib/security";
 
 export async function POST(request: Request) {
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ reply: result.reply }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("[api/insights]", error);
-    return jsonError("Personalized greeting unavailable", 503);
+    const failure = agentFailure(error);
+    return jsonError(failure.message, failure.status);
   }
 }

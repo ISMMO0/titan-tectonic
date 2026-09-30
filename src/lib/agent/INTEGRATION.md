@@ -2,6 +2,26 @@
 
 Work stays on `stefano-branch`, per Stefano's instruction.
 
+## Latest integration status — September 30
+
+The team changes from `main` at `7731a61` are now merged, including voice and
+internal transfers. The additional portfolio and FX tools from Ismail's
+`59a4dff` are incorporated with explicit mock-data labels and missing-price
+handling. The tested Task A budget, risk and confirmation logic is retained.
+
+The shared Supabase now returns stock data (Apple: mock EUR 198.40), consistent
+with Ismail's alternative `0003_market_and_buy_stock.sql`. **Do not apply our
+`0003_market.sql` on top of an existing stocks table.** These are alternative
+version-0003 migrations, not sequential migrations. The database owner must
+reconcile the migration history before using automatic migration tooling.
+Our isolated confirmation tests cover our version; they do not prove which
+confirmation-function version is currently installed in shared Supabase.
+
+The configured local Google key still returns HTTP 429 with quota limit 0.
+All reviewed branches use the same Gemini API connection; no branch contains
+the teammate's working private key. The local UI now reports this problem
+explicitly. A working local key is required for LLM-driven chat and Gemini voice.
+
 ## Run on a teammate's machine
 
 1. Fetch the repository and check out `stefano-branch`. Pull its latest changes.

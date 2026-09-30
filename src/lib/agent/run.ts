@@ -21,6 +21,8 @@ async function callTool(name: string, args: unknown, ctx: ToolContext, readOnly 
     readOnly &&
     ![
       "get_balance",
+      "get_portfolio",
+      "get_exchange_rate",
       "get_transactions",
       "get_calendar_events",
       "get_budget_summary",
