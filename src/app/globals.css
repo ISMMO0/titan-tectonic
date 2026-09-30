@@ -205,6 +205,26 @@ h1 {
   color: var(--muted);
   line-height: 1.5;
 }
+.insight-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+.insight-actions button {
+  min-height: 38px;
+  padding: 0 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+.insight-actions button:first-child {
+  border-color: var(--ink);
+  color: white;
+  background: var(--ink);
+}
 .starter-list {
   margin-top: 0.5rem;
 }

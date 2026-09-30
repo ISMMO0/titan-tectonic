@@ -41,6 +41,14 @@ type Transaction = {
 };
 type View = "agent" | "activity" | "preferences";
 
+// Gemini expects the conversation to start with the user. When Titan spoke first
+// (proactive greeting), add a short opener so a reply like "yes" keeps its context.
+function toHistory(messages: Message[]) {
+  const history = messages.map(({ role, content }) => ({ role, content }));
+  if (history[0]?.role === "assistant") history.unshift({ role: "user", content: "(opened the app)" });
+  return history.slice(-30);
+}
+
 const starters = [
   { label: "Understand my spending", prompt: "Help me understand my recent spending.", icon: BarChart3 },
   { label: "Set a savings goal", prompt: "I want to set a new savings goal.", icon: PiggyBank },
@@ -75,6 +83,9 @@ export function ChatWindow({
   const [preferencesSaved, setPreferencesSaved] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(transactions[0]?.id ?? "");
   const [voiceOn, setVoiceOn] = useState(false);
+  // "Titan speaks first": proactive message about the most important life moment.
+  const [insight, setInsight] = useState<{ reply: string; pendingActions?: PendingAction[] } | null>(null);
+  const insightRequested = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const checking = accounts.find((account) => account.type === "checking");
   const savings = accounts.find((account) => account.type === "savings");
@@ -84,6 +95,15 @@ export function ChatWindow({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    if (insightRequested.current) return; // React dev mode runs effects twice
+    insightRequested.current = true;
+    fetch("/api/insights", { method: "POST" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => data?.reply && setInsight(data))
+      .catch(() => {}); // keep the default welcome text
+  }, []);
 
   function addAssistant(content: string, actions?: PendingAction[], speakIt = voiceOn) {
     setMessages((m) => [...m, { role: "assistant", content, actions }]);
@@ -100,7 +120,12 @@ export function ChatWindow({
     const content = text.trim();
     if (!content || loading) return;
     stopSpeaking();
-    const next = [...messages, { role: "user" as const, content }];
+    // First message after a proactive greeting: keep the greeting as context.
+    const start: Message[] =
+      messages.length === 0 && insight && proactivity !== "ask"
+        ? [{ role: "assistant", content: insight.reply, actions: insight.pendingActions }]
+        : messages;
+    const next = [...start, { role: "user" as const, content }];
     setMessages(next);
     setInput("");
     setLoading(true);
@@ -109,7 +134,7 @@ export function ChatWindow({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: next.map(({ role, content: value }) => ({ role, content: value })),
+          messages: toHistory(next),
         }),
       });
       const data = await res.json();
@@ -210,13 +235,28 @@ export function ChatWindow({
                 </p>
                 <div className="agent-note">
                   <span className="titan-mark">T</span>
-                  <div>
-                    <strong>Let&apos;s start with what matters today.</strong>
-                    <p>
-                      I won&apos;t make personal suggestions until I understand your priorities and
-                      permissions.
-                    </p>
-                  </div>
+                  {insight && proactivity !== "ask" ? (
+                    <div>
+                      <strong>Something coming up</strong>
+                      <p>{insight.reply}</p>
+                      <div className="insight-actions">
+                        <button type="button" onClick={() => send("Yes, please do that.")}>
+                          Yes, do it
+                        </button>
+                        <button type="button" onClick={() => send("Tell me more.")}>
+                          Tell me more
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <strong>Let&apos;s start with what matters today.</strong>
+                      <p>
+                        I won&apos;t make personal suggestions until I understand your priorities and
+                        permissions.
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div className="starter-list" aria-label="Start with Titan">
                   {starters.map(({ label, prompt, icon: Icon }) => (

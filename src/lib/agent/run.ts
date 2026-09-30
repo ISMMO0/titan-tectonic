@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import type { Content, FunctionDeclaration, Part } from "@google/genai";
-import { gemini } from "@/lib/llm/gemini";
+import { gemini, withRetry } from "@/lib/llm/gemini";
 import { systemPrompt } from "./prompt";
 import { tools, toolsByName } from "./tools";
 import type { PendingAction, ToolContext } from "./tools/types";
@@ -50,14 +50,16 @@ export async function runAgent(messages: ChatMessage[], ctx: ToolContext) {
   const toolsUsed: string[] = [];
 
   for (let step = 0; step < MAX_STEPS; step++) {
-    const response = await client.models.generateContent({
-      model,
-      contents,
-      config: {
-        systemInstruction: systemPrompt(profile ?? { full_name: "", risk_level: "medium", goals: [] }),
-        tools: [{ functionDeclarations }],
-      },
-    });
+    const response = await withRetry(() =>
+      client.models.generateContent({
+        model,
+        contents,
+        config: {
+          systemInstruction: systemPrompt(profile ?? { full_name: "", risk_level: "medium", goals: [] }),
+          tools: [{ functionDeclarations }],
+        },
+      }),
+    );
 
     const calls = response.functionCalls ?? [];
     if (calls.length === 0) {
