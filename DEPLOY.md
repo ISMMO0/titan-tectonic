@@ -56,18 +56,36 @@ shown by `gcloud builds get-default-service-account` instead of `CLOUDBUILD_SA`.
 
 ## Validate Vertex models
 
-Model availability can vary by project and location. Test candidates before deployment; do not
-hard-code them in the image. The agent and STT calls use `generateContent`; TTS requests AUDIO.
+The selected models are `gemini-2.5-flash` for the agent and audio transcription, and
+`gemini-2.5-flash-tts` for speech output. Both use the Vertex `generateContent` API in `global`.
+Availability can still vary by project, so run these smoke tests before deploying:
 
 ```bash
-gcloud ai models list --region=global --filter='displayName~gemini' \
-  --format='table(displayName,name)' || true
+PROJECT_ID=qwiklabs-gcp-01-d65161dd06b1
+LOCATION=global
+ACCESS_TOKEN="$(gcloud auth print-access-token)"
+
+curl -fsS \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H 'Content-Type: application/json' \
+  "https://aiplatform.googleapis.com/v1/projects/${PROJECT_ID}/locations/${LOCATION}/publishers/google/models/gemini-2.5-flash:generateContent" \
+  --data '{"contents":[{"role":"user","parts":[{"text":"Reply with OK."}]}]}' \
+  | jq -e '.candidates[0].content.parts[0].text'
+
+curl -fsS \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H 'Content-Type: application/json' \
+  "https://aiplatform.googleapis.com/v1beta1/projects/${PROJECT_ID}/locations/${LOCATION}/publishers/google/models/gemini-2.5-flash-tts:generateContent" \
+  --data '{"contents":[{"role":"user","parts":[{"text":"Say OK."}]}],"generationConfig":{"responseModalities":["AUDIO"],"speechConfig":{"voiceConfig":{"prebuiltVoiceConfig":{"voiceName":"Kore"}}}}}' \
+  | jq -e '.candidates[0].content.parts[0].inlineData.data | length > 0'
+
+unset ACCESS_TOKEN
 ```
 
-Use the Vertex AI Model Garden or a small SDK test in Cloud Shell to confirm one fast Gemini Flash
-model for `GEMINI_MODEL` and `GEMINI_STT_MODEL`. Confirm a speech-capable model separately for
-`GEMINI_TTS_MODEL`. If Vertex TTS is unavailable, set `VOICE_PROVIDER=browser`; the app will use the
-browser's speech synthesis fallback.
+The model references are documented in Google Cloud's
+[Vertex AI quickstart](https://cloud.google.com/vertex-ai/generative-ai/docs/start/quickstart) and
+[Gemini TTS guide](https://cloud.google.com/text-to-speech/docs/gemini-tts). If the TTS test is not
+available in the lab, deploy with `VOICE_PROVIDER=browser`; the app will use browser speech synthesis.
 
 ## Build
 
@@ -88,14 +106,13 @@ IMAGE="europe-west1-docker.pkg.dev/qwiklabs-gcp-01-d65161dd06b1/titan/titan:${IM
 
 ## Deploy
 
-The recommended starting point is a generally available Gemini Flash model in `global`. Replace the
-model variables below with the names confirmed in the previous step. Making the service public and
-changing IAM are outward-facing actions; review the command before running it.
+The chosen models below must pass the previous smoke tests. Making the service public and changing
+IAM are outward-facing actions; review the command before running it.
 
 ```bash
-AGENT_MODEL=REPLACE_WITH_VALIDATED_VERTEX_FLASH_MODEL
+AGENT_MODEL=gemini-2.5-flash
 STT_MODEL="$AGENT_MODEL"
-TTS_MODEL=REPLACE_WITH_VALIDATED_VERTEX_TTS_MODEL
+TTS_MODEL=gemini-2.5-flash-tts
 
 gcloud run deploy titan \
   --image="$IMAGE" \
