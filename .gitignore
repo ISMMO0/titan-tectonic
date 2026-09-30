@@ -65,3 +65,6 @@ Thumbs.db
 
 # Local recordings / screenshots for the demo
 /recordings/
+
+# Local Claude Code settings
+.claude/

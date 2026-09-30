@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { speak, stopSpeaking } from "@/lib/voice/browser";
 import { ConfirmCard, type ActionStatus } from "./ConfirmCard";
 import { MessageBubble } from "./MessageBubble";
 import { MicButton } from "./MicButton";
@@ -20,6 +21,7 @@ export function ChatWindow({ firstName }: { firstName: string }) {
   const [actionStatus, setActionStatus] = useState<Record<string, ActionStatus>>({});
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [voiceOn, setVoiceOn] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const greetingRequest = useRef<Promise<string | null> | null>(null);
   const conversationStarted = useRef(false);
@@ -51,10 +53,22 @@ export function ChatWindow({ firstName }: { firstName: string }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  async function send(text: string) {
+  function addAssistant(content: string, actions?: PendingAction[], speakIt = voiceOn) {
+    setMessages((m) => [...m, { role: "assistant", content, actions }]);
+    if (speakIt) void speak(content);
+  }
+
+  // Talking to Titan turns spoken replies on.
+  function sendVoice(text: string) {
+    setVoiceOn(true);
+    void send(text, true);
+  }
+
+  async function send(text: string, speakReply = voiceOn) {
     const content = text.trim();
     if (!content || loading) return;
     conversationStarted.current = true;
+    stopSpeaking();
 
     const next = [...messages, { role: "user" as const, content }];
     setMessages(next);
@@ -70,9 +84,9 @@ export function ChatWindow({ firstName }: { firstName: string }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong");
-      setMessages((m) => [...m, { role: "assistant", content: data.reply, actions: data.pendingActions }]);
+      addAssistant(data.reply, data.pendingActions, speakReply);
     } catch (err) {
-      setMessages((m) => [...m, { role: "assistant", content: `⚠️ ${(err as Error).message}` }]);
+      addAssistant(`⚠️ ${(err as Error).message}`, undefined, false);
     } finally {
       setLoading(false);
     }
@@ -84,15 +98,31 @@ export function ChatWindow({ firstName }: { firstName: string }) {
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.ok === false) {
       setActionStatus((s) => ({ ...s, [id]: "failed" }));
-      setMessages((m) => [...m, { role: "assistant", content: `⚠️ ${data.error ?? "That didn't work"}` }]);
+      addAssistant(`⚠️ ${data.error ?? "That didn't work"}`, undefined, false);
       return;
     }
     setActionStatus((s) => ({ ...s, [id]: decision === "confirm" ? "confirmed" : "cancelled" }));
+    if (voiceOn) void speak(decision === "confirm" ? "Done." : "Cancelled.");
     router.refresh(); // update balances + transactions
   }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col rounded-2xl bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2">
+        <span className="text-sm font-medium text-slate-500">Titan</span>
+        <button
+          type="button"
+          onClick={() => {
+            if (voiceOn) stopSpeaking();
+            setVoiceOn(!voiceOn);
+          }}
+          aria-pressed={voiceOn}
+          title={voiceOn ? "Voice replies on" : "Voice replies off"}
+          className={`rounded-full px-3 py-1 text-sm ${voiceOn ? "bg-brand text-white" : "bg-slate-100 text-slate-500"}`}
+        >
+          {voiceOn ? "🔊 Voice on" : "🔈 Voice off"}
+        </button>
+      </div>
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
         {messages.map((m, i) => (
           <div key={i} className="space-y-2">
@@ -119,7 +149,11 @@ export function ChatWindow({ firstName }: { firstName: string }) {
         }}
         className="flex items-center gap-2 border-t border-slate-100 p-3"
       >
-        <MicButton onTranscript={send} disabled={loading} />
+        <MicButton
+          onTranscript={sendVoice}
+          onError={(message) => addAssistant(`⚠️ ${message}`, undefined, false)}
+          disabled={loading}
+        />
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
