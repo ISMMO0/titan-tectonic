@@ -14,30 +14,33 @@
   --cyan: #00a9d6;
   --cyan-soft: #e7f8fc;
 }
-* {
-  box-sizing: border-box;
-}
-html {
-  background: var(--paper);
-}
-body {
-  min-height: 100%;
-  margin: 0;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-sans), system-ui, sans-serif;
-  letter-spacing: 0;
-}
-button,
-input {
-  font: inherit;
-}
-button,
-a {
-  -webkit-tap-highlight-color: transparent;
-}
-button {
-  color: inherit;
+/* Element defaults live in the base layer so Tailwind utilities (e.g. text-white) can override them. */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  html {
+    background: var(--paper);
+  }
+  body {
+    min-height: 100%;
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans), system-ui, sans-serif;
+    letter-spacing: 0;
+  }
+  button,
+  input {
+    font: inherit;
+  }
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button {
+    color: inherit;
+  }
 }
 button:focus-visible,
 a:focus-visible,
