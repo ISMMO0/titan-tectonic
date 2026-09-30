@@ -10,6 +10,14 @@ import { MicButton } from "./MicButton";
 type PendingAction = { id: string; type: string; summary: string };
 type Message = { role: "user" | "assistant"; content: string; actions?: PendingAction[] };
 
+// The first message is Titan's greeting. The API expects the conversation to start with
+// the user, so we add a short opener — this keeps the proactive greeting as context
+// (e.g. the user answering "yes" to "want yen for Tokyo?").
+function toHistory(messages: Message[]) {
+  const history = messages.map(({ role, content }) => ({ role, content }));
+  return [{ role: "user" as const, content: "(opened the app)" }, ...history].slice(-30);
+}
+
 export function ChatWindow({ firstName }: { firstName: string }) {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([
@@ -23,10 +31,29 @@ export function ChatWindow({ firstName }: { firstName: string }) {
   const [loading, setLoading] = useState(false);
   const [voiceOn, setVoiceOn] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // Proactive greeting ("Titan speaks first"): replaces the static greeting once loaded.
+  const proactive = useRef<"idle" | "loading" | "done">("idle");
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (proactive.current !== "idle") return; // React dev mode runs effects twice
+    proactive.current = "loading";
+    fetch("/api/insights", { method: "POST" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.reply) {
+          setMessages((m) => [
+            { role: "assistant", content: data.reply, actions: data.pendingActions },
+            ...m.slice(1),
+          ]);
+        }
+      })
+      .catch(() => {}) // keep the static greeting
+      .finally(() => (proactive.current = "done"));
+  }, []);
 
   function addAssistant(content: string, actions?: PendingAction[], speakIt = voiceOn) {
     setMessages((m) => [...m, { role: "assistant", content, actions }]);
@@ -53,8 +80,7 @@ export function ChatWindow({ firstName }: { firstName: string }) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Skip the local greeting; send only role + content.
-        body: JSON.stringify({ messages: next.slice(1).map(({ role, content }) => ({ role, content })) }),
+        body: JSON.stringify({ messages: toHistory(next) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong");

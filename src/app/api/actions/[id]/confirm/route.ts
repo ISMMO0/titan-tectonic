@@ -14,7 +14,13 @@ export async function POST(request: Request, ctx: RouteContext<"/api/actions/[id
   const { data, error } = await auth.supabase.rpc("confirm_action", { p_action_id: id.data });
   if (error) {
     // Business errors raised in SQL are safe to show; don't leak anything else.
-    const safe = ["insufficient funds", "amount above limit", "action not found", "contact not found"];
+    const safe = [
+      "insufficient funds",
+      "amount above limit",
+      "action not found",
+      "contact not found",
+      "stock not found",
+    ];
     const message = safe.find((m) => error.message.includes(m)) ?? "Could not complete the action";
     return jsonError(message, 400);
   }
