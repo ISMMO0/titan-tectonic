@@ -16,7 +16,22 @@ const functionDeclarations: FunctionDeclaration[] = tools.map((t) => ({
   parametersJsonSchema: z.toJSONSchema(t.schema, { io: "input" }),
 }));
 
-async function callTool(name: string, args: unknown, ctx: ToolContext) {
+async function callTool(name: string, args: unknown, ctx: ToolContext, readOnly = false) {
+  if (
+    readOnly &&
+    ![
+      "get_balance",
+      "get_transactions",
+      "get_calendar_events",
+      "get_budget_summary",
+      "get_stock_price",
+      "create_investment_plan",
+      "detect_life_moments",
+      "get_suggestions",
+    ].includes(name)
+  ) {
+    return { data: { error: "Actions are not permitted during a proactive greeting." } };
+  }
   const tool = toolsByName.get(name);
   if (!tool) return { data: { error: `Unknown tool ${name}` } };
 
@@ -32,7 +47,11 @@ async function callTool(name: string, args: unknown, ctx: ToolContext) {
 }
 
 /** Runs the agent loop: LLM ↔ tools until the LLM answers in text. */
-export async function runAgent(messages: ChatMessage[], ctx: ToolContext) {
+export async function runAgent(
+  messages: ChatMessage[],
+  ctx: ToolContext,
+  options: { readOnly?: boolean } = {},
+) {
   const { client, model } = gemini();
 
   const { data: profile } = await ctx.supabase
@@ -55,7 +74,15 @@ export async function runAgent(messages: ChatMessage[], ctx: ToolContext) {
       contents,
       config: {
         systemInstruction: systemPrompt(profile ?? { full_name: "", risk_level: "medium", goals: [] }),
-        tools: [{ functionDeclarations }],
+        tools: [
+          {
+            functionDeclarations: options.readOnly
+              ? functionDeclarations.filter(
+                  (tool) => !["transfer_money", "move_to_savings", "buy_stock"].includes(tool.name ?? ""),
+                )
+              : functionDeclarations,
+          },
+        ],
       },
     });
 
@@ -77,7 +104,7 @@ export async function runAgent(messages: ChatMessage[], ctx: ToolContext) {
     for (const call of calls) {
       const name = call.name ?? "";
       toolsUsed.push(name);
-      const result = await callTool(name, call.args, ctx);
+      const result = await callTool(name, call.args, ctx, options.readOnly);
       if (result.pendingAction) pendingActions.push(result.pendingAction);
       results.push({ functionResponse: { id: call.id, name, response: { result: result.data } } });
     }

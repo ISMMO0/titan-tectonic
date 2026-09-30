@@ -21,6 +21,31 @@ export function ChatWindow({ firstName }: { firstName: string }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const greetingRequest = useRef<Promise<string | null> | null>(null);
+  const conversationStarted = useRef(false);
+
+  useEffect(() => {
+    let active = true;
+    // Keep one request through Strict Mode effect replay. Never overwrite a conversation.
+    greetingRequest.current ??= fetch("/api/insights", {
+      method: "POST",
+      headers: { "Accept-Language": navigator.language },
+    })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        const data = await response.json();
+        return typeof data.reply === "string" && data.reply.trim() ? data.reply : null;
+      })
+      .catch(() => null);
+    greetingRequest.current.then((reply) => {
+      if (active && reply && !conversationStarted.current) {
+        setMessages([{ role: "assistant", content: reply }]);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -29,6 +54,7 @@ export function ChatWindow({ firstName }: { firstName: string }) {
   async function send(text: string) {
     const content = text.trim();
     if (!content || loading) return;
+    conversationStarted.current = true;
 
     const next = [...messages, { role: "user" as const, content }];
     setMessages(next);
@@ -39,8 +65,8 @@ export function ChatWindow({ firstName }: { firstName: string }) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Skip the local greeting; send only role + content.
-        body: JSON.stringify({ messages: next.slice(1).map(({ role, content }) => ({ role, content })) }),
+        // Retain the greeting so follow-ups about the suggested moment have context.
+        body: JSON.stringify({ messages: next.map(({ role, content }) => ({ role, content })) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong");
@@ -56,7 +82,7 @@ export function ChatWindow({ firstName }: { firstName: string }) {
     setActionStatus((s) => ({ ...s, [id]: "working" }));
     const res = await fetch(`/api/actions/${id}/${decision}`, { method: "POST" });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
+    if (!res.ok || data.ok === false) {
       setActionStatus((s) => ({ ...s, [id]: "failed" }));
       setMessages((m) => [...m, { role: "assistant", content: `⚠️ ${data.error ?? "That didn't work"}` }]);
       return;
