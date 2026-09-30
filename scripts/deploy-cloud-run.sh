@@ -49,32 +49,45 @@ fi
 
 step "Picking Gemini models that work on Vertex AI"
 TOKEN="$(gcloud auth print-access-token)"
-vertex() { # $1 = model, $2 = api version, $3 = json body → prints HTTP status
-  curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer ${TOKEN}" \
-    -H 'Content-Type: application/json' --data "$3" \
-    "https://aiplatform.googleapis.com/$2/projects/${PROJECT_ID}/locations/${LOCATION}/publishers/google/models/$1:generateContent"
+vertex() { # $1 = location, $2 = model, $3 = api version, $4 = json body → prints "<http status> <error message>"
+  local host="aiplatform.googleapis.com"
+  [[ "$1" != global ]] && host="$1-aiplatform.googleapis.com"
+  local out code
+  out="$(curl -s -w '\n%{http_code}' -H "Authorization: Bearer ${TOKEN}" \
+    -H 'Content-Type: application/json' --data "$4" \
+    "https://${host}/$3/projects/${PROJECT_ID}/locations/$1/publishers/google/models/$2:generateContent")"
+  code="${out##*$'\n'}"
+  local err=""
+  if [[ "$code" != 200 ]]; then
+    err="$(printf '%s' "${out%$'\n'*}" | tr -d '\n' | grep -o '"message": *"[^"]*"' | head -1 | cut -c1-160 || true)"
+  fi
+  echo "$code $err"
 }
 TEXT='{"contents":[{"role":"user","parts":[{"text":"Reply with OK."}]}]}'
 AUDIO='{"contents":[{"role":"user","parts":[{"text":"OK"}]}],"generationConfig":{"responseModalities":["AUDIO"],"speechConfig":{"voiceConfig":{"prebuiltVoiceConfig":{"voiceName":"Kore"}}}}}'
 
 AGENT_MODEL=""
-for m in gemini-2.5-flash gemini-2.5-flash-lite gemini-2.0-flash; do
-  code="$(vertex "$m" v1 "$TEXT")"
-  echo "  agent $m → HTTP $code"
-  if [[ "$code" == 200 ]]; then AGENT_MODEL="$m"; break; fi
+for loc in ${VERTEX_LOCATIONS:-global europe-west1 us-central1}; do
+  for m in gemini-2.5-flash gemini-2.5-flash-lite gemini-2.0-flash-001; do
+    res="$(vertex "$loc" "$m" v1 "$TEXT")"
+    code="${res%% *}"
+    echo "  agent $loc/$m → HTTP $res"
+    if [[ "$code" == 200 ]]; then AGENT_MODEL="$m"; LOCATION="$loc"; break 2; fi
+  done
 done
-[[ -n "$AGENT_MODEL" ]] || { echo "No Gemini text model available on Vertex AI in $PROJECT_ID"; exit 1; }
+[[ -n "$AGENT_MODEL" ]] || { echo "No Gemini text model available on Vertex AI in $PROJECT_ID (see errors above)"; exit 1; }
 
 TTS_MODEL=""
 for m in gemini-2.5-flash-tts gemini-2.5-flash-preview-tts gemini-2.5-pro-tts; do
-  code="$(vertex "$m" v1beta1 "$AUDIO")"
-  echo "  tts   $m → HTTP $code"
+  res="$(vertex "$LOCATION" "$m" v1beta1 "$AUDIO")"
+  code="${res%% *}"
+  echo "  tts   $LOCATION/$m → HTTP $res"
   if [[ "$code" == 200 ]]; then TTS_MODEL="$m"; break; fi
 done
 unset TOKEN
 # No TTS model? Keep Gemini for speech-to-text; the app falls back to the browser's voice.
 TTS_MODEL="${TTS_MODEL:-gemini-2.5-flash-tts}"
-echo "  → agent/STT: $AGENT_MODEL · TTS: $TTS_MODEL"
+echo "  → location: $LOCATION · agent/STT: $AGENT_MODEL · TTS: $TTS_MODEL"
 
 TAG="$(git rev-parse --short HEAD)"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/titan/titan:${TAG}"
