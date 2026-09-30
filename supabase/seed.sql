@@ -7,6 +7,7 @@
 --      lucas@titan.demo  — 21, student, tight budget
 --      sofia@titan.demo  — 34, new parent
 --      tom@titan.demo    — 30, Emma's friend (receives her transfers)
+--      jury@titan.demo   — public demo login for the jury (same scenario as Emma)
 -- 2. Then run this file in the SQL editor.
 --    The on_auth_user_created trigger already created their profile + accounts.
 -- =============================================================================
@@ -19,7 +20,7 @@ declare
 begin
   for u in
     select id, email from auth.users
-    where email in ('emma@titan.demo', 'lucas@titan.demo', 'sofia@titan.demo', 'tom@titan.demo')
+    where email in ('emma@titan.demo', 'lucas@titan.demo', 'sofia@titan.demo', 'tom@titan.demo', 'jury@titan.demo')
   loop
     -- Reset previous demo data for this user
     delete from public.transactions    where user_id = u.id;
@@ -32,7 +33,7 @@ begin
     select id into v_checking from public.accounts where user_id = u.id and type = 'checking';
     select id into v_savings  from public.accounts where user_id = u.id and type = 'savings';
 
-    if u.email = 'emma@titan.demo' then
+    if u.email in ('emma@titan.demo', 'jury@titan.demo') then
       update public.profiles set full_name = 'Emma Peeters', risk_level = 'medium', calendar_opt_in = true,
         goals = '[{"title": "Buy a house", "target": 40000, "deadline": "2029-06-01"}]'
         where id = u.id;
