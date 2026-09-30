@@ -3,6 +3,17 @@
 These steps deploy Titan to the Tectonic hackathon project. The Qwiklabs project expires about one
 week after activation, so confirm the final demo URL shortly before judging.
 
+## Quick deploy (one command)
+
+```bash
+bash scripts/deploy-cloud-run.sh <SUPABASE_URL> <SUPABASE_PUBLISHABLE_KEY>                       # Vertex AI
+GEMINI_MODE=apikey bash scripts/deploy-cloud-run.sh <SUPABASE_URL> <SUPABASE_PUBLISHABLE_KEY>    # AI Studio key
+```
+
+> **Tectonic lab note:** this lab's org policy `constraints/vertexai.allowedModels` is `denyAll`, so
+> Vertex AI models are blocked. Use `GEMINI_MODE=apikey`: you paste your AI Studio key once at a
+> hidden prompt, it is stored in Secret Manager and only the Titan service account can read it.
+
 ## Prerequisites
 
 - Run the commands in Google Cloud Shell; `gcloud` is not required on developer machines.
