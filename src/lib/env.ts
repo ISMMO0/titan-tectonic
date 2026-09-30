@@ -5,10 +5,10 @@ import { z } from "zod";
 // NEVER import this file from a client component.
 const serverSchema = z.object({
   GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY is missing — see .env.example"),
-  GEMINI_MODEL: z.string().default("gemini-2.5-flash"),
+  GEMINI_MODEL: z.string().default("gemini-3.5-flash-lite"),
   // Voice: "gemini" now, "elevenlabs" once credits are back, "browser" = let the browser speak.
   VOICE_PROVIDER: z.enum(["gemini", "elevenlabs", "browser"]).default("gemini"),
-  GEMINI_STT_MODEL: z.string().default("gemini-2.5-flash"),
+  GEMINI_STT_MODEL: z.string().default("gemini-3.5-flash-lite"),
   GEMINI_TTS_MODEL: z.string().default("gemini-3.8-flash-tts"),
   GEMINI_TTS_VOICE: z.string().default("Kore"),
   ELEVENLABS_API_KEY: z.string().optional(),
