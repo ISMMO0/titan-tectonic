@@ -70,4 +70,8 @@ Ordering foreign currency · extra verification above €500 · bank-side "scale
 
 ## Team
 
-Ismail El Hammoumi · Stefano Carulli · Stephane Titalem — built during the Tectonic Hackathon.
+- **ismail EL HAMMOUMI**
+- **Stephane Titalem**
+- **Stefano Carulli**
+
+Built during the Tectonic Hackathon.
