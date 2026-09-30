@@ -18,16 +18,21 @@ KEY="$(printf '%s' "$KEY" | tr -d '[:space:]')"
 [[ -n "$KEY" ]] || { echo "No key given."; exit 1; }
 
 echo "Testing the key against Gemini ($MODEL)…"
-code="$(curl -s -o /dev/null -w '%{http_code}' -H "x-goog-api-key: ${KEY}" \
+RESPONSE="$(mktemp)"
+code="$(curl -s -o "$RESPONSE" -w '%{http_code}' -H "x-goog-api-key: ${KEY}" \
   -H 'Content-Type: application/json' \
   --data '{"contents":[{"parts":[{"text":"Reply with OK."}]}]}' \
   "https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent")"
 if [[ "$code" != 200 ]]; then
   unset KEY
   echo "❌ Gemini refused this key (HTTP $code). Nothing was changed."
+  # Google's explanation (never contains the key), e.g. quota limit 0 = lab key, limit 20 = free tier used up.
+  tr -d '\n' <"$RESPONSE" | grep -oE '"message": *"[^"]{0,300}' | head -1 | sed 's/^/   /' || true
+  rm -f "$RESPONSE"
   echo "   Use a key from https://aistudio.google.com/apikey (personal Google account, starts with AIza)."
   exit 1
 fi
+rm -f "$RESPONSE"
 echo "✅ Key works."
 
 printf '%s' "$KEY" | gcloud secrets versions add gemini-api-key --data-file=- >/dev/null
