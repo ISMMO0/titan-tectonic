@@ -10,21 +10,24 @@ import {
   Landmark,
   LockKeyhole,
   LogOut,
-  MessageCircle,
   PiggyBank,
   ReceiptText,
   Send,
   Settings2,
   ShieldCheck,
   Sparkles,
+  Volume2,
+  VolumeX,
   WalletCards,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { logout } from "@/app/login/actions";
 import { formatEUR } from "@/lib/format";
+import { speak, stopSpeaking } from "@/lib/voice/browser";
 import { ConfirmCard, type ActionStatus } from "./ConfirmCard";
 import { MessageBubble } from "./MessageBubble";
+import { MicButton } from "./MicButton";
 
 type PendingAction = { id: string; type: string; summary: string };
 type Message = { role: "user" | "assistant"; content: string; actions?: PendingAction[] };
@@ -71,6 +74,7 @@ export function ChatWindow({
   });
   const [preferencesSaved, setPreferencesSaved] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(transactions[0]?.id ?? "");
+  const [voiceOn, setVoiceOn] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const checking = accounts.find((account) => account.type === "checking");
   const savings = accounts.find((account) => account.type === "savings");
@@ -81,9 +85,21 @@ export function ChatWindow({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  async function send(text: string) {
+  function addAssistant(content: string, actions?: PendingAction[], speakIt = voiceOn) {
+    setMessages((m) => [...m, { role: "assistant", content, actions }]);
+    if (speakIt) void speak(content);
+  }
+
+  // Talking to Titan turns spoken replies on.
+  function sendVoice(text: string) {
+    setVoiceOn(true);
+    void send(text, true);
+  }
+
+  async function send(text: string, speakReply = voiceOn) {
     const content = text.trim();
     if (!content || loading) return;
+    stopSpeaking();
     const next = [...messages, { role: "user" as const, content }];
     setMessages(next);
     setInput("");
@@ -98,12 +114,9 @@ export function ChatWindow({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong");
-      setMessages((current) => [
-        ...current,
-        { role: "assistant", content: data.reply, actions: data.pendingActions },
-      ]);
-    } catch (error) {
-      setMessages((current) => [...current, { role: "assistant", content: (error as Error).message }]);
+      addAssistant(data.reply, data.pendingActions, speakReply);
+    } catch (err) {
+      addAssistant((err as Error).message, undefined, false);
     } finally {
       setLoading(false);
     }
@@ -115,13 +128,11 @@ export function ChatWindow({
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setActionStatus((current) => ({ ...current, [id]: "failed" }));
-      setMessages((current) => [
-        ...current,
-        { role: "assistant", content: data.error ?? "That action could not be completed." },
-      ]);
+      addAssistant(data.error ?? "That action could not be completed.", undefined, false);
       return;
     }
     setActionStatus((current) => ({ ...current, [id]: decision === "confirm" ? "confirmed" : "cancelled" }));
+    if (voiceOn) void speak(decision === "confirm" ? "Done." : "Cancelled.");
     router.refresh();
   }
 
@@ -163,6 +174,19 @@ export function ChatWindow({
           </button>
         </nav>
         <div className="profile-menu">
+          <button
+            className="icon-button"
+            type="button"
+            onClick={() => {
+              if (voiceOn) stopSpeaking();
+              setVoiceOn(!voiceOn);
+            }}
+            aria-pressed={voiceOn}
+            title={voiceOn ? "Turn voice replies off" : "Turn voice replies on"}
+            aria-label={voiceOn ? "Turn voice replies off" : "Turn voice replies on"}
+          >
+            {voiceOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
+          </button>
           <span className="avatar">{displayName.charAt(0).toUpperCase()}</span>
           <span className="profile-name">{displayName}</span>
           <form action={logout}>
@@ -271,7 +295,11 @@ export function ChatWindow({
             >
               <label htmlFor="agent-input">Or tell me what you need</label>
               <div className="composer">
-                <MessageCircle size={21} />
+                <MicButton
+                  onTranscript={sendVoice}
+                  onError={(message) => addAssistant(message, undefined, false)}
+                  disabled={loading}
+                />
                 <input
                   id="agent-input"
                   value={input}

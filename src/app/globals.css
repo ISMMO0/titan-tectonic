@@ -301,8 +301,10 @@ h1 {
   border-color: var(--cyan);
   box-shadow: 0 0 0 2px rgba(0, 169, 214, 0.12);
 }
-.composer > svg {
-  color: #53657c;
+.composer > button:first-child {
+  width: 42px;
+  height: 42px;
+  border-radius: 4px;
 }
 .composer input {
   min-width: 0;
@@ -315,7 +317,7 @@ h1 {
 .composer input::placeholder {
   color: #8b99aa;
 }
-.composer button {
+.composer button[type="submit"] {
   width: 44px;
   height: 44px;
   display: grid;
@@ -329,10 +331,10 @@ h1 {
     transform 100ms ease,
     opacity 150ms ease;
 }
-.composer button:active {
+.composer button[type="submit"]:active {
   transform: scale(0.97);
 }
-.composer button:disabled {
+.composer button[type="submit"]:disabled {
   opacity: 0.35;
   cursor: default;
 }
