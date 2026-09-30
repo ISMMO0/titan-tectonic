@@ -3,12 +3,24 @@ import { GoogleGenAI } from "@google/genai";
 import { serverEnv } from "@/lib/env";
 
 // Thin wrapper so the rest of the app doesn't depend on the SDK setup.
-// Switch to Vertex AI later with: new GoogleGenAI({ vertexai: true, project, location }).
 let client: GoogleGenAI | undefined;
 
 export function gemini() {
-  client ??= new GoogleGenAI({ apiKey: serverEnv().GEMINI_API_KEY });
-  return { client, model: serverEnv().GEMINI_MODEL };
+  const env = serverEnv();
+  if (!client) {
+    if (env.GOOGLE_GENAI_USE_VERTEXAI) {
+      if (!env.GOOGLE_CLOUD_PROJECT) throw new Error("GOOGLE_CLOUD_PROJECT is required for Vertex AI");
+      client = new GoogleGenAI({
+        vertexai: true,
+        project: env.GOOGLE_CLOUD_PROJECT,
+        location: env.GOOGLE_CLOUD_LOCATION,
+      });
+    } else {
+      if (!env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is required for the Gemini Developer API");
+      client = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+    }
+  }
+  return { client, model: env.GEMINI_MODEL };
 }
 
 const RETRYABLE = new Set([429, 500, 503]);
