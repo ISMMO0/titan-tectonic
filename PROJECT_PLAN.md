@@ -190,3 +190,9 @@ Aikido checks: **business logic flaws, IDOR, authentication, authorization.**
 | ElevenLabs | Discord → #coupon-codes → Start Redemption | ⏳ in progress |
 | Cursor | Discord → #coupon-codes → Start Redemption | ⬜ |
 | Aikido | https://app.aikido.dev/ai-pentests/discounts/hackathon-tectonic-aikido → Continue with GitHub | ⬜ |
+
+---
+
+## 11. Team Split
+
+See **[TEAM_TASKS.md](TEAM_TASKS.md)**: what's built, how to run it, and the 5 tasks.
