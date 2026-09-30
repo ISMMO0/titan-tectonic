@@ -15,13 +15,13 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#003665",
+  themeColor: "#f8fafb",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${geistSans.variable} h-full antialiased`}>
-      <body className="min-h-full bg-slate-100 text-slate-900">{children}</body>
+      <body>{children}</body>
     </html>
   );
 }
