@@ -1,0 +1,26 @@
+substitutions:
+  _REGION: europe-west1
+  _REPOSITORY: titan
+  _IMAGE: titan
+  _TAG: latest
+  _SUPABASE_URL: ""
+  _SUPABASE_PUBLISHABLE_KEY: ""
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --build-arg
+      - NEXT_PUBLIC_SUPABASE_URL=${_SUPABASE_URL}
+      - --build-arg
+      - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${_SUPABASE_PUBLISHABLE_KEY}
+      - --tag
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:${_TAG}
+      - .
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:${_TAG}
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:${_TAG}

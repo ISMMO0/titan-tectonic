@@ -2,13 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { hasSupabaseConfig, supabaseConfig } from "./config";
 
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PATHS = ["/login", "/api/health"];
 
 // Refreshes the Supabase session cookie and redirects signed-out users to /login.
 // This is an optimistic check only — every API route re-verifies the user.
 export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATHS.some((p) => path.startsWith(p));
+  const isPublic = PUBLIC_PATHS.some((publicPath) => path === publicPath || path.startsWith(`${publicPath}/`));
   let response = NextResponse.next({ request });
 
   // Not configured yet (no .env.local): only the login page is reachable.
