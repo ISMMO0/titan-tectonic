@@ -1,155 +1,73 @@
-# Titan Tectonic
+# Titan — the banking agent that anticipates
 
-Hackathon project for the **Tectonic Hackathon — KBC challenge**.
+> **Tectonic Hackathon · KBC challenge** — *Kate answers. Titan anticipates.*
 
-> *"Every KBC customer gets their own personal banker — available 24/7, knows their life, and acts before they ask."*
-> **Kate answers. Titan anticipates.**
+🔗 **Live app:** _link coming soon_
 
-Titan is a chat-first banking web app: you open it and talk (text or voice) to your personal AI agent, which checks balances, moves money, saves, invests and proactively suggests things based on your situation (calendar, transactions, goals).
-**The agent proposes, the human approves** — no money moves without explicit confirmation.
+## 🎬 Demo
 
-👉 **New here? Start with [TEAM_TASKS.md](TEAM_TASKS.md)** (what's built, how to run it, who does what).
-Full vision & roadmap: [PROJECT_PLAN.md](PROJECT_PLAN.md)
+| Concept (15 s) | Live app — real database (4× speed) |
+|:---:|:---:|
+| [![Titan teaser](docs/media/titan-teaser.gif)](docs/media/titan-teaser.mp4) | [![Titan live demo](docs/media/titan-live-demo.gif)](docs/media/titan-live-demo.mp4) |
+| [▶ Watch MP4](docs/media/titan-teaser.mp4) | [▶ Watch full 77 s MP4](docs/media/titan-live-demo.mp4) |
 
-## Team
+In the live demo, Emma checks her balance, moves €500 to savings, asks for investment advice, buys €600 of a world ETF and sends €50 to Tom — **every action confirmed by her**, balances updated live in the database.
 
-- ismail EL HAMMOUMI
-- Stefano Carulli
-- Stephane Titalem
+## The challenge → our answer
 
-## Tech stack
+KBC asked for a **scalable personalization approach** — not another feature. Titan gives every customer a personal AI banker that understands their situation and acts at the right moment.
 
-| Layer | Tech |
+| KBC question | Titan |
 |---|---|
-| App (frontend + API) | Next.js 16 (App Router, TypeScript), Tailwind CSS |
-| Database & auth | Supabase (Postgres + Auth + Row Level Security) |
-| Agent brain | Gemini (`@google/genai`) with function calling |
-| Voice | ElevenLabs Speech-to-Text + Text-to-Speech *(Phase 2)* |
-| Hosting | Google Cloud Run (Dockerfile included) |
-| Security audit | Aikido |
+| **Which signals** show what customers need? | Transactions, balances, calendar (opt-in), goals, risk profile |
+| **How to recognize** situation & intent? | Life-moment engine: upcoming trip, celebration, low balance, salary received |
+| **How does it adapt** to each customer? | Titan **speaks first** with the one thing that matters now, in the customer's language |
+| **Across products & channels?** | One agent for payments, savings, investing and FX — by text or voice (EN / NL / FR) |
+| **Impact for millions?** | Explainable rules + one agent per customer: scales like software, not like advisors |
 
-## Getting started
+## What Titan does
 
-Requires Node 22 (`nvm use`).
+| | Feature | Example |
+|---|---|---|
+| ✈️ | **Speaks first** | *"Your Tokyo trip is in 8 days — want yen at 162.4?"* |
+| 💶 | **Understands spending** | *"Where does my money go?"* → breakdown by category |
+| 📈 | **Invests by risk profile** | *"€2,000 bonus, house in 3 years"* → diversified plan + projection |
+| 🛒 | **Acts with approval** | Transfers, savings, stocks → confirm card (with risk warning) → done |
+| 🎙️ | **Voice** | Talk to Titan, hear the answer |
 
-```bash
-git clone https://github.com/ISMMO0/titan-tectonic.git
-cd titan-tectonic
-npm install
-cp .env.example .env.local   # then fill in the values
-npm run dev                  # http://localhost:3000
-```
-
-### 1. Supabase (one person does this once, then shares the keys privately)
-
-1. Create a free project on [supabase.com](https://supabase.com).
-2. **SQL Editor** → paste and run [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql).
-3. **Authentication → Users → Add user** (tick *Auto Confirm User*) for the demo personas:
-   `emma@titan.demo`, `lucas@titan.demo`, `sofia@titan.demo` — pick your own password.
-4. **SQL Editor** → run [`supabase/seed.sql`](supabase/seed.sql) to load their accounts, transactions, contacts and calendar.
-5. **Project Settings → API** → copy the URL and the *publishable/anon* key into `.env.local`.
-
-### 2. Gemini
-
-Get an API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (or use Vertex AI with the hackathon GCP credits) → `GEMINI_API_KEY` in `.env.local`.
-
-### 3. Try it
-
-Log in as Emma and ask: *"What's my balance?"*, *"What did I spend on food?"*, *"Send €30 to Tom"* → confirm the card → the balance updates.
-
-> 🔐 Share keys via a private channel (DM), **never** in the repo, issues or PRs.
-
-## Scripts
-
-| Command | What it does |
-|---|---|
-| `npm run dev` | Dev server |
-| `npm run build` / `npm start` | Production build / server |
-| `npm run lint` | ESLint |
-| `npm run typecheck` | TypeScript |
-| `npm run format` | Prettier |
-
-CI runs lint, typecheck, format check, build and `npm audit` on every PR.
-
-## Architecture
+## How it works
 
 ```
- 🎤 Voice ─► /api/voice/stt ─┐
- 💬 Text ────────────────────┼─► /api/chat ─► Agent loop (Gemini + tools) ─► Supabase (RLS)
- 🔊 Voice ◄─ /api/voice/tts ◄┘                    │
-                                                  └─► pending_actions ─► user clicks Confirm
-                                                        ─► /api/actions/[id]/confirm ─► confirm_action() SQL
+Customer (text / voice) ──► Agent (Gemini + 12 tools) ──► Supabase (Postgres + Row Level Security)
+                                   │
+                                   └─► proposes an action ──► customer confirms ──► SQL function moves the money
 ```
 
-```
-src/
-  proxy.ts                    # session refresh + redirect to /login (Next 16 "middleware")
-  app/
-    login/                    # sign-in page + server actions
-    (app)/page.tsx            # chat-first home + mini dashboard
-    api/chat/                 # agent endpoint
-    api/actions/[id]/         # confirm / cancel an agent-proposed action
-    api/voice/                # ElevenLabs STT/TTS (stubs)
-  lib/
-    agent/run.ts              # LLM ↔ tools loop
-    agent/prompt.ts           # system prompt
-    agent/tools/              # one file per tool + index.ts registry
-    llm/gemini.ts             # Gemini client
-    supabase/                 # server client, proxy helper
-    security.ts               # requireUser(): same-origin + auth + rate limit
-    env.ts                    # validated server secrets
-  components/chat, dashboard
-supabase/
-  migrations/                 # schema, RLS, confirm_action()
-  seed.sql                    # demo personas
-```
-
-### Adding an agent tool
-
-1. Create `src/lib/agent/tools/my-tool.ts` with `defineTool({ name, description, schema, run })`.
-2. Add it to the list in `src/lib/agent/tools/index.ts`.
-3. Read data through `ctx.supabase` (RLS-scoped). **Never** accept a user id from the model.
-4. Anything that changes money/data: insert a `pending_actions` row and return it as `pendingAction` — then handle the type in `confirm_action()` via a new migration.
+- **Agent:** Gemini with function calling over 12 typed tools (balance, budget, calendar, life moments, stocks, portfolio, investment plan, FX, transfer, savings, buy stock).
+- **Human-in-the-loop:** the AI can only *propose*. Money moves in one database function that re-checks owner, expiry, limits, balance and price.
+- **Stack:** Next.js 16 · TypeScript · Supabase · Google Gemini / Vertex AI · Google Cloud Run · GitHub Actions CI.
 
 ## Security
 
-Aikido checks business logic, IDOR, authentication and authorization. Built in from day one:
+- **Row Level Security** on every table — customers only ever see their own data (no IDOR).
+- Clients **cannot write balances**; the AI cannot move money without an explicit confirmation.
+- User identity always comes from the verified session, **never from the AI** or the request.
+- Input validation, CSRF protection, rate limiting, security headers (CSP, HSTS), secrets server-side only.
 
-- **Row Level Security** on every table — users only ever see their own rows.
-- Clients can't update balances; money only moves through `confirm_action()`, which re-checks owner, status, expiry, limits (€500/transfer) and balance, atomically.
-- **Human-in-the-loop:** agent tools can only *propose* actions.
-- User id always comes from the verified session (`getClaims()`), never from the LLM or request body.
-- zod validation on every API input; same-origin (CSRF) check and rate limiting on every API route.
-- Security headers (CSP, frame-ancestors, nosniff, HSTS…) in `next.config.ts`.
-- Secrets only server-side (`server-only`), `.env*` git-ignored, no service-role key in the app.
-- LLM output rendered as plain text (no HTML injection).
-
-## Team workflow
-
-- `main` must always work. Branch per feature: `feat/voice-stt`, `feat/invest-tools`, `fix/…`.
-- Small PRs, CI green, one teammate reviews before merging.
-- DB changes = **new** migration file (`0002_….sql`); never edit an applied one. Post in the chat when a migration needs to be run.
-- Stay in your area to avoid conflicts (see PROJECT_PLAN.md for the split).
-
-## Deploy (Google Cloud Run)
+## Run it locally
 
 ```bash
-gcloud run deploy titan --source . --region europe-west1 \
-  --set-env-vars GEMINI_MODEL=gemini-2.5-flash \
-  --set-secrets GEMINI_API_KEY=gemini-key:latest,ELEVENLABS_API_KEY=elevenlabs-key:latest
+npm install
+cp .env.example .env.local   # Supabase URL + publishable key, Gemini API key
+npm run dev                  # http://localhost:3000
 ```
 
-`NEXT_PUBLIC_*` values are needed at **build** time (see `Dockerfile` build args).
+Database: run `supabase/migrations/*.sql` in order, create the demo users, then `supabase/seed.sql`.
 
-## Unfinished / TODO
+## Not finished yet
 
-- Voice (ElevenLabs STT/TTS) — routes and mic button are stubs.
-- Investing & stocks (`create_investment_plan`, `buy_stock`), budget summary, life-moment detection, proactive suggestions.
-- Extra verification for transfers above €500.
-- Bank-side "scale" dashboard, WhatsApp/Telegram channel.
-- Rate limiter is in-memory (per instance).
+Ordering foreign currency · extra verification above €500 · bank-side "scale" dashboard · ElevenLabs voices.
 
-## Hackathon notes
+## Team
 
-- Built during the official hackathon time slot.
-- Repository stays public and accessible until judging is complete.
+Ismail El Hammoumi · Stefano Carulli · Stephane Titalem — built during the Tectonic Hackathon.
