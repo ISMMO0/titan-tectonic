@@ -8,7 +8,9 @@ Project setup instructions will be added as the app takes shape.
 
 ## Team
 
-- Ismail
+- Ismail Hammoumi
+- Stefano Carulli
+- Stephane Titalem
 
 ## Notes
 
